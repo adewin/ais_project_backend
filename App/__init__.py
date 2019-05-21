@@ -6,10 +6,12 @@ from App.settings import envs
 # 蓝图注册
 def register_bps(app):
     from App.Apis.test import test
+    from App.Apis.test2 import test2
     from App.Apis.test_data import test_data
     from App.Apis.dbscan_api import dbscan_api
     from App.Apis.basic_query import basic_query_api
     app.register_blueprint(test, url_prefix='/api')
+    app.register_blueprint(test2, url_prefix='/api')
     app.register_blueprint(test_data, url_prefix='/api')
     app.register_blueprint(basic_query_api, url_prefix='/api')
     app.register_blueprint(dbscan_api)
