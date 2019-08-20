@@ -1,10 +1,10 @@
-# 基本查询功能接口模块
+# 基本查询功能接口模块（POS信息）
 from flask import Blueprint, request, jsonify
 from flask_restful import reqparse, Api, Resource, abort
 import datetime, time
 from App.ext import db
 from sqlalchemy import and_, or_
-from App.Models.models import ShipInfo, Pos
+from App.Models.models import Pos
 from App.Controllers.tools import intToCoordinate, CoordinateToInt, timestampToDatetime
 
 basic_query_api = Blueprint('basic_query', __name__)
@@ -27,7 +27,7 @@ def getDataFromPos(pos):
             info.update(updatetime=timestampToDatetime(i.UpdateTime, format='sec'))
             info.update(inserttime=i.InsertTime.strftime('%Y-%m-%d %H:%M:%S'))
             detail.append(info)
-        return [{'num': number, 'data': detail, 'lnglat': lnglat}]
+        return [{'num': number, 'detail': detail, 'lnglat': lnglat}]
 
 # 按入库时间InsertTime查询(每分钟区间)
 # 输出结果方便显示在vue-bmap组件上
@@ -98,6 +98,7 @@ class queryByTimeAndSpace(Resource):
                 pos = Pos.query.filter(and_(Pos.InsertTime >= stime, Pos.InsertTime <=etime, Pos.Lat > point2_lat, Pos.Lat < point1_lat, Pos.Lon > point1_lng, Pos.Lon < point2_lng))
                 a = getDataFromPos(pos)
                 return a
+
 # 按入库时间UpdateTime查询(每分钟区间)
 # (不好用，时间没有规律)
 class queryByUpdateTime(Resource):
@@ -116,8 +117,38 @@ class queryByMMSI(Resource):
         a = getDataFromPos(pos)
         return a 
 
+# 根据矩形范围（经纬度）获取数据
+class getDataByRectangle(Resource):
+    def __init__(self):
+        self.parser = reqparse.RequestParser()
+        self.parser.add_argument('task', type=str)
+        self.parser.add_argument('lnglat_top_left', type=str, required=True)
+        self.parser.add_argument('lnglat_bottom_right', type=str, required=True)
+
+    def post(self):
+        args = self.parser.parse_args()
+        point1 = args['lnglat_top_left']
+        point2 = args['lnglat_bottom_right']
+
+        point1_lng = CoordinateToInt(point1.split(',')[0])
+        point1_lat = CoordinateToInt(point1.split(',')[1])
+        point2_lng = CoordinateToInt(point2.split(',')[0])
+        point2_lat = CoordinateToInt(point2.split(',')[1])
+        pos = Pos.query.filter(and_(Pos.Lat > point2_lat, Pos.Lat < point1_lat, Pos.Lon > point1_lng, Pos.Lon < point2_lng))
+        
+        lnglat = []
+        number = 0
+        for i in pos:
+            lng = intToCoordinate(i.Lon)
+            lat = intToCoordinate(i.Lat)
+            info = {'lng': lng, 'lat': lat}
+            lnglat.append(info)
+            number +=1
+        return [{'number': number, 'lnglat': lnglat}]
+
 basic_query.add_resource(queryByInsertTime, '/get_data_by_inserttime/<insert_time>')
 basic_query.add_resource(queryByUpdateTime, '/get_data_by_updatetime/<update_time>')
+basic_query.add_resource(getDataByRectangle, '/get_data_by_rectangle')
 basic_query.add_resource(queryByMMSI, '/get_data_by_mmsi/<mmsi>')
 basic_query.add_resource(queryByTimeRange, '/get_data_by_timerange/')
 basic_query.add_resource(queryByTimeAndSpace, '/get_data_by_time_space/')

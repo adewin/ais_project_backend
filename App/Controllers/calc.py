@@ -1,6 +1,7 @@
 import numpy as np
 from sklearn.cluster import DBSCAN
 from math import *
+import operator
 import json
 
 
@@ -30,6 +31,30 @@ def get_distance(array_1, array_2):
     earth_radius = 6378137
     s = s * earth_radius
     return s
+
+# 计算K-dist
+def KNN(data):
+    dataset = np.array(data)
+    n = dataset.shape[0]
+    K = int(log(n))
+    print(K)
+    dist_list = []
+    for i in dataset:
+        i_list = list(i)
+        # print(i_list)
+        dist_list_a = []
+        for j in dataset:
+            j_list = list(j)
+            if (not operator.eq(i_list, j_list)):
+                distance = get_distance(i, j)
+                dist_list_a.append(distance)
+        dist_list_a.sort()
+        for k in range(0, K):
+            dist = int(dist_list_a[k])
+            dist_list.append(dist)
+    dist_list.sort(reverse = True)
+    return dist_list
+
 
 # 计算dbscan
 # 输入坐标数组，搜索范围， 最小样本
